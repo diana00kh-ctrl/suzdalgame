@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F2A9F5">
+<title>МедиаСуздаль — угадай цену за ночь 🍷</title>
+<meta name="description" content="Смотри фото квартир в Суздале и угадывай реальную цену за ночь по объявлениям Avito. Игра для взрослых, которые содержат котов.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23FFD338'/%3E%3Crect x='6' y='6' width='88' height='88' rx='16' fill='none' stroke='%23111' stroke-width='6'/%3E%3Ctext x='50' y='70' font-size='50' text-anchor='middle' fill='%23111' font-family='Arial' font-weight='bold'%3E₽%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --ink: #141414;
+    --lilac: #F2A9F5;
+    --lilac-2: #E77BEE;
+    --yellow: #FFD338;
+    --red: #FF5D47;
+    --green: #3DDC84;
+    --blue: #4C7DFF;
+    --cream: #FFF6E8;
+    --good: #0E9F5B;
+    --bad: #E0341F;
+    --shadow: 5px 5px 0 var(--ink);
+    --shadow-sm: 3px 3px 0 var(--ink);
+    --radius: 18px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--lilac); color: var(--ink);
+    line-height: 1.45;
+  }
+
+  .screen { display: none; min-height: 100dvh; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ---------- декоративные фигурки ---------- */
+  .deco { position: fixed; z-index: 0; pointer-events: none; }
+  .deco-circle { width: 60px; height: 60px; border-radius: 50%; border: 4px solid var(--ink); }
+  .deco-ring { width: 44px; height: 44px; border-radius: 50%; border: 10px solid var(--red); }
+  .deco-sq { width: 40px; height: 40px; background: var(--blue); border: 4px solid var(--ink); border-radius: 8px; transform: rotate(12deg); }
+  .deco-tri { width: 0; height: 0; border-left: 26px solid transparent; border-right: 26px solid transparent; border-bottom: 44px solid var(--green); transform: rotate(-14deg); }
+  .deco-zig { font-size: 34px; font-weight: 900; color: var(--ink); transform: rotate(8deg); }
+  .deco-dot2 { width: 18px; height: 18px; border-radius: 50%; background: var(--ink); }
+
+  /* ---------- шапка ---------- */
+  .topbar {
+    background: var(--yellow);
+    border-bottom: 4px solid var(--ink);
+    padding: calc(env(safe-area-inset-top) + 10px) 16px 10px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    position: relative; z-index: 2;
+  }
+  .logo { font-weight: 900; font-size: 18px; letter-spacing: .3px; display: flex; align-items: baseline; gap: 3px; }
+  .logo .dot {
+    background: var(--red); color: #fff; border: 2px solid var(--ink);
+    border-radius: 8px; padding: 0 6px; font-size: 13px; transform: rotate(-4deg); display: inline-block;
+  }
+  .round-label {
+    font-size: 13px; font-weight: 800; white-space: nowrap;
+    background: #fff; border: 3px solid var(--ink); border-radius: 999px; padding: 4px 12px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .progress-wrap { background: var(--ink); height: 10px; position: relative; z-index: 2; }
+  .progress-bar { height: 100%; width: 0%; background: repeating-linear-gradient(45deg, var(--red) 0 12px, var(--yellow) 12px 24px); transition: width .35s ease; }
+
+  /* ---------- кнопки ---------- */
+  .btn {
+    display: block; width: 100%; border: 4px solid var(--ink); border-radius: 14px; cursor: pointer;
+    font-size: 17px; font-weight: 900; padding: 15px; text-align: center;
+    background: var(--green); color: var(--ink);
+    box-shadow: var(--shadow); transition: transform .08s ease, box-shadow .08s ease;
+    text-transform: uppercase; letter-spacing: .4px;
+  }
+  .btn:active { transform: translate(5px, 5px); box-shadow: 0 0 0 var(--ink); }
+  .btn-yellow { background: var(--yellow); }
+  .btn-red { background: var(--red); color: #fff; }
+  .btn-ghost { background: #fff; }
+
+  /* ---------- стартовый экран ---------- */
+  #screen-start { position: relative; overflow: hidden; }
+  .start-inner {
+    flex: 1; display: flex; flex-direction: column; justify-content: center;
+    padding: 40px 20px calc(env(safe-area-inset-bottom) + 30px); max-width: 580px; width: 100%; margin: 0 auto;
+    position: relative; z-index: 1;
+  }
+  .start-badge {
+    width: fit-content; background: var(--red); color: #fff; font-weight: 900; font-size: 12px;
+    text-transform: uppercase; letter-spacing: 1px; padding: 6px 12px; border: 3px solid var(--ink);
+    border-radius: 999px; box-shadow: var(--shadow-sm); transform: rotate(-3deg); margin-bottom: 16px;
+  }
+  .start-logo {
+    font-size: clamp(38px, 10vw, 54px); font-weight: 900; line-height: 1.05; letter-spacing: .5px;
+    text-shadow: 4px 4px 0 #fff, 7px 7px 0 var(--ink);
+  }
+  .start-logo .hl {
+    background: var(--yellow); border: 3px solid var(--ink); border-radius: 14px;
+    padding: 0 10px; display: inline-block; transform: rotate(-2deg); box-shadow: var(--shadow-sm);
+  }
+  .start-sub { font-size: 16px; font-weight: 600; margin-top: 16px; background: #fff; border: 3px solid var(--ink); border-radius: 12px; padding: 10px 14px; box-shadow: var(--shadow-sm); width: fit-content; max-width: 100%; }
+  .rules { margin: 26px 0; background: var(--cream); border: 4px solid var(--ink); border-radius: var(--radius); padding: 18px 18px 8px; box-shadow: var(--shadow); }
+  .rules h2 {
+    font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;
+    display: inline-block; background: var(--blue); color: #fff; padding: 5px 12px;
+    border: 3px solid var(--ink); border-radius: 999px; transform: rotate(-1.5deg);
+  }
+  .rules li { list-style: none; display: flex; gap: 12px; align-items: flex-start; font-size: 15px; padding: 7px 0; font-weight: 600; }
+  .step-num {
+    flex: 0 0 30px; height: 30px; border-radius: 50%; background: var(--yellow); color: var(--ink);
+    font-weight: 900; font-size: 15px; display: flex; align-items: center; justify-content: center;
+    border: 3px solid var(--ink); margin-top: -1px;
+  }
+  .rules li:nth-child(2) .step-num { background: var(--green); }
+  .rules li:nth-child(3) .step-num { background: var(--red); color: #fff; }
+  .rules li:nth-child(4) .step-num { background: var(--blue); color: #fff; }
+  .start-foot { text-align: center; font-size: 12px; font-weight: 700; opacity: .75; margin-top: 14px; }
+
+  /* ---------- карточка лота ---------- */
+  #screen-round { position: relative; }
+  .card {
+    flex: 1; display: flex; flex-direction: column; min-height: 0;
+    max-width: 580px; width: 100%; margin: 0 auto; position: relative; z-index: 1;
+  }
+  .gallery {
+    position: relative; overflow: hidden; flex: 0 0 auto;
+    background: var(--ink); border-bottom: 4px solid var(--ink);
+  }
+  .gallery-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .gallery-track::-webkit-scrollbar { display: none; }
+  .gallery-slide { flex: 0 0 100%; scroll-snap-align: start; }
+  .gallery-slide img {
+    display: block; width: 100%; height: min(48vw, 360px); max-height: 40dvh; object-fit: cover;
+    aspect-ratio: 4/3; image-rendering: auto;
+  }
+  .gallery-count {
+    position: absolute; top: 12px; right: 12px; background: var(--yellow); color: var(--ink);
+    font-size: 12px; font-weight: 900; padding: 4px 10px; border-radius: 20px; border: 3px solid var(--ink);
+  }
+  .dots { position: absolute; bottom: 12px; left: 0; right: 0; display: flex; gap: 6px; justify-content: center; }
+  .dots i { width: 8px; height: 8px; border-radius: 4px; background: rgba(255,255,255,.55); transition: all .2s; border: 1.5px solid var(--ink); }
+  .dots i.on { width: 22px; background: var(--yellow); }
+
+  .lot-meta { padding: 14px 16px 4px; }
+  .lot-title {
+    font-size: 18px; font-weight: 900; width: fit-content; max-width: 100%;
+    background: #fff; border: 3px solid var(--ink); border-radius: 12px; padding: 8px 12px; box-shadow: var(--shadow-sm);
+  }
+  .lot-sub { font-size: 13.5px; font-weight: 700; margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    background: var(--cream); border: 2.5px solid var(--ink); border-radius: 999px; padding: 3px 10px;
+    font-size: 12.5px; font-weight: 800;
+  }
+  .chip.star { background: var(--yellow); }
+  .chip.super { background: var(--green); }
+
+  .guess-box {
+    margin-top: auto; padding: 12px 16px calc(env(safe-area-inset-bottom) + 14px);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .guess-card { background: #fff; border: 4px solid var(--ink); border-radius: var(--radius); padding: 12px 14px 6px; box-shadow: var(--shadow); }
+  .guess-label { font-size: 12px; color: var(--ink); text-transform: uppercase; letter-spacing: .8px; font-weight: 900; }
+  .guess-value { font-size: 32px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .guess-value small { font-size: 15px; font-weight: 800; }
+
+  input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 40px; background: transparent; }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 12px; border-radius: 6px; border: 3px solid var(--ink);
+    background: linear-gradient(to right, var(--red) var(--fill, 50%), var(--cream) var(--fill, 50%));
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 32px; height: 32px; margin-top: -13px;
+    border-radius: 50%; background: var(--yellow); border: 4px solid var(--ink);
+    box-shadow: 2px 2px 0 var(--ink); cursor: grab;
+  }
+  input[type="range"]::-moz-range-track { height: 12px; border-radius: 6px; border: 3px solid var(--ink); background: var(--cream); }
+  input[type="range"]::-moz-range-progress { height: 12px; border-radius: 6px; background: var(--red); }
+  input[type="range"]::-moz-range-thumb {
+    width: 26px; height: 26px; border-radius: 50%; background: var(--yellow); border: 4px solid var(--ink);
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+  .scale-hint { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink); font-weight: 700; opacity: .7; }
+  .btn-row { padding-top: 2px; }
+
+  /* ---------- результат раунда ---------- */
+  .result-body { flex: 1; overflow-y: auto; padding: 18px 16px calc(env(safe-area-inset-bottom) + 16px); max-width: 580px; width: 100%; margin: 0 auto; position: relative; z-index: 1; }
+  .verdict { text-align: center; padding: 6px 0 2px; }
+  .verdict-emoji { font-size: 40px; }
+  .verdict h2 {
+    font-size: 21px; margin-top: 4px; width: fit-content; margin-left: auto; margin-right: auto;
+    background: #fff; border: 3px solid var(--ink); border-radius: 12px; padding: 6px 14px; box-shadow: var(--shadow-sm);
+  }
+
+  .meme-card {
+    margin: 16px auto 0; max-width: 360px; background: #fff; border: 4px solid var(--ink);
+    border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); transform: rotate(-1deg);
+  }
+  .meme-card svg { display: block; width: 100%; height: auto; }
+  .meme-caption {
+    font-family: "Comic Sans MS", "Chalkboard SE", "Comic Neue", cursive;
+    font-size: 14px; font-weight: 700; text-align: center; padding: 8px 12px;
+    border-top: 3px solid var(--ink); background: var(--cream);
+  }
+
+  .price-compare { display: flex; align-items: stretch; justify-content: center; gap: 10px; margin: 16px 0 10px; }
+  .price-cell { flex: 1; background: #fff; border: 4px solid var(--ink); border-radius: var(--radius); padding: 12px 10px; text-align: center; box-shadow: var(--shadow-sm); }
+  .price-cell.you { background: var(--blue); color: #fff; transform: rotate(-1deg); }
+  .price-cell.real { background: var(--yellow); transform: rotate(1deg); }
+  .price-cell .cap { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; font-weight: 900; opacity: .85; }
+  .price-cell .val { font-size: 18px; font-weight: 900; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .price-cell .val small { font-size: 12px; }
+  .diff-line { text-align: center; font-size: 15px; font-weight: 800; background: #fff; border: 3px solid var(--ink); border-radius: 12px; padding: 8px 12px; box-shadow: var(--shadow-sm); }
+  .diff-line.over { background: var(--red); color: #fff; }
+  .diff-line.under { background: var(--blue); color: #fff; }
+  .diff-line.exact { background: var(--green); }
+
+  .score-chip {
+    margin: 14px auto 0; width: fit-content; background: var(--ink); color: var(--yellow);
+    border-radius: 999px; padding: 8px 20px; font-weight: 900; font-size: 18px;
+    border: 3px solid var(--ink); box-shadow: var(--shadow-sm);
+  }
+  .score-note { text-align: center; font-size: 13px; font-weight: 700; margin-top: 8px; opacity: .8; }
+
+  .link-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-top: 16px; padding: 12px; border-radius: 12px; background: #fff;
+    color: var(--ink); font-weight: 800; font-size: 14px; text-decoration: none;
+    border: 3px solid var(--ink); box-shadow: var(--shadow-sm);
+  }
+  .link-btn:active { transform: translate(3px, 3px); box-shadow: none; }
+  .result-actions { margin-top: 16px; }
+
+  /* ---------- итоговый экран ---------- */
+  #screen-final { position: relative; }
+  .final-inner {
+    flex: 1; overflow-y: auto; display: flex; flex-direction: column; justify-content: center;
+    padding: 36px 20px calc(env(safe-area-inset-bottom) + 24px); max-width: 580px; width: 100%; margin: 0 auto;
+    position: relative; z-index: 1;
+  }
+  .final-title {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; width: fit-content;
+    background: var(--ink); color: #fff; padding: 6px 12px; border-radius: 999px; transform: rotate(-2deg);
+  }
+  .persona-emoji {
+    font-size: 60px; text-align: center; margin: 14px 0 6px;
+    width: 110px; height: 110px; display: flex; align-items: center; justify-content: center;
+    background: var(--yellow); border: 4px solid var(--ink); border-radius: 50%;
+    box-shadow: var(--shadow); margin-left: auto; margin-right: auto; transform: rotate(-4deg);
+  }
+  .persona-name { font-size: 28px; font-weight: 900; text-align: center; }
+  .persona-desc { text-align: center; margin-top: 10px; font-size: 15px; font-weight: 600; background: #fff; border: 3px solid var(--ink); border-radius: 12px; padding: 10px 14px; box-shadow: var(--shadow-sm); }
+  .final-score {
+    margin: 20px auto 0; background: var(--cream); border: 4px solid var(--ink); border-radius: var(--radius);
+    padding: 14px 26px; text-align: center; width: 100%; box-shadow: var(--shadow);
+  }
+  .final-score .num { font-size: 44px; font-weight: 900; color: var(--ink); }
+  .final-score .of { font-size: 18px; font-weight: 800; opacity: .6; }
+  .final-score .cap { font-size: 13px; font-weight: 700; margin-top: 2px; }
+  .final-stats { margin-top: 16px; display: flex; gap: 10px; }
+  .stat-cell { flex: 1; background: #fff; border: 3px solid var(--ink); border-radius: 14px; padding: 12px 8px; text-align: center; box-shadow: var(--shadow-sm); }
+  .stat-cell:nth-child(1) { background: var(--green); }
+  .stat-cell:nth-child(2) { background: var(--yellow); }
+  .stat-cell:nth-child(3) { background: var(--red); color: #fff; }
+  .stat-cell .v { font-size: 18px; font-weight: 900; }
+  .stat-cell .c { font-size: 11.5px; font-weight: 700; margin-top: 2px; opacity: .85; }
+  .best-round { margin-top: 16px; font-size: 13px; text-align: center; font-weight: 700; background: #fff; border: 3px solid var(--ink); border-radius: 12px; padding: 9px 12px; box-shadow: var(--shadow-sm); }
+  .final-actions { margin-top: 22px; display: flex; flex-direction: column; gap: 12px; }
+
+  @media (min-width: 600px) { .gallery-slide img { height: 380px; } }
+</style>
+</head>
+<body>
+
+<!-- декоративные фигурки в духе референса -->
+<div class="deco deco-ring" style="top:6%; left:4%;"></div>
+<div class="deco deco-sq" style="top:14%; right:6%;"></div>
+<div class="deco deco-tri" style="bottom:22%; left:3%;"></div>
+<div class="deco deco-circle" style="bottom:10%; right:5%;"></div>
+<div class="deco deco-zig" style="top:44%; right:3%;">~</div>
+<div class="deco deco-dot2" style="top:8%; right:30%;"></div>
+<div class="deco deco-dot2" style="top:12%; right:34%;"></div>
+<div class="deco deco-dot2" style="top:8%; right:38%;"></div>
+
+<!-- ============ СТАРТ ============ -->
+<section id="screen-start" class="screen active">
+  <div class="start-inner">
+    <div class="start-badge">Adulting level: 30+</div>
+    <div class="start-logo">Медиа<span class="hl">Суздаль</span></div>
+    <div class="start-sub">Угадай цену за ночь 🍷 Пока другие копят на ипотеку, мы считаем, сколько стоит выходные в Суздале</div>
+
+    <div class="rules">
+      <h2>Как играть (это не сложно, честно)</h2>
+      <ul>
+        <li><span class="step-num">1</span><span>Смотри фото квартиры. Осторожно: захочется жить</span></li>
+        <li><span class="step-num">2</span><span>Двигай бегунок — сколько стоит ночь? ☕ Цену узнал(а), кофе не нужен</span></li>
+        <li><span class="step-num">3</span><span>Жми кнопку и узнавай правду. Правда может ранить 💔</span></li>
+        <li><span class="step-num">4</span><span>Всего <b>10 квартир</b> за раунд. Максимум — <b>100 баллов</b>. Котиков не забудь покормить</span></li>
+      </ul>
+    </div>
+
+    <button class="btn btn-yellow" id="btn-start">Погнали 🚀 (взрослеть не обязательно)</button>
+    <div class="start-foot">Цены реальные, с Avito. Совпадения с твоими отпускными планами случайны 😂</div>
+  </div>
+</section>
+
+<!-- ============ РАУНД ============ -->
+<section id="screen-round" class="screen">
+  <header class="topbar">
+    <div class="logo">Медиа<span class="dot">Суздаль</span></div>
+    <div class="round-label" id="round-label">Лот 1 из 10</div>
+  </header>
+  <div class="progress-wrap"><div class="progress-bar" id="progress"></div></div>
+
+  <div class="card">
+    <div class="gallery">
+      <div class="gallery-track" id="gallery"></div>
+      <div class="gallery-count" id="gallery-count"></div>
+      <div class="dots" id="dots"></div>
+    </div>
+    <div class="lot-meta">
+      <div class="lot-title" id="lot-title"></div>
+      <div class="lot-sub" id="lot-sub"></div>
+    </div>
+    <div class="guess-box">
+      <div class="guess-card">
+        <div class="guess-label">Сколько стоит ночь? (не паникуем)</div>
+        <div class="guess-value" id="guess-value">6 000 <small>₽/ночь</small></div>
+        <input type="range" id="slider" min="0" max="1000" step="1" value="500" aria-label="Ваша цена">
+        <div class="scale-hint"><span>2 000 ₽</span><span>15 000 ₽</span></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-red" id="btn-submit">Оценить 💸 (без ипотеки)</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ РЕЗУЛЬТАТ РАУНДА ============ -->
+<section id="screen-result" class="screen">
+  <header class="topbar">
+    <div class="logo">Медиа<span class="dot">Суздаль</span></div>
+    <div class="round-label" id="result-round-label"></div>
+  </header>
+  <div class="progress-wrap"><div class="progress-bar" id="progress2"></div></div>
+  <div class="result-body">
+    <div class="verdict">
+      <div class="verdict-emoji" id="verdict-emoji"></div>
+      <h2 id="verdict-text"></h2>
+      <p style="font-size:14px; font-weight:600; margin-top:8px; opacity:.85" id="verdict-sub"></p>
+    </div>
+
+    <div class="meme-card" id="meme-card">
+      <div id="meme-svg"></div>
+      <div class="meme-caption" id="meme-caption"></div>
+    </div>
+
+    <div class="price-compare">
+      <div class="price-cell you"><div class="cap">Твоя цена</div><div class="val" id="your-price"></div></div>
+      <div class="price-cell real"><div class="cap">Реальная цена</div><div class="val" id="real-price"></div></div>
+    </div>
+    <div class="diff-line" id="diff-line"></div>
+    <div class="score-chip" id="score-chip"></div>
+    <div class="score-note" id="score-note"></div>
+    <a class="link-btn" id="listing-link" target="_blank" rel="noopener">🔗 Открыть объявление (боль внутри)</a>
+    <div class="result-actions">
+      <button class="btn btn-yellow" id="btn-next">Следующая квартира</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ИТОГ ============ -->
+<section id="screen-final" class="screen">
+  <div class="final-inner">
+    <div class="final-title">Итоги: adulting complete</div>
+    <div class="persona-emoji" id="persona-emoji"></div>
+    <div class="persona-name" id="persona-name"></div>
+    <div class="persona-desc" id="persona-desc"></div>
+
+    <div class="final-score">
+      <div><span class="num" id="final-score">0</span><span class="of"> / 100</span></div>
+      <div class="cap">баллов за игру. Кофе заслужен ☕</div>
+    </div>
+
+    <div class="final-stats">
+      <div class="stat-cell"><div class="v" id="stat-avg"></div><div class="c">среднее отклонение</div></div>
+      <div class="stat-cell"><div class="v" id="stat-best"></div><div class="c">лучший раунд</div></div>
+      <div class="stat-cell"><div class="v" id="stat-perfect"></div><div class="c">точных попаданий</div></div>
+    </div>
+    <div class="best-round" id="final-hint"></div>
+
+    <div class="final-actions">
+      <button class="btn btn-green" id="btn-restart">Играть ещё раз (прокаффиниться и снова)</button>
+    </div>
+  </div>
+</section>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var ROUNDS = 10;
+  var MIN_P = 2000, MAX_P = 15000;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = function (n) { return n.toLocaleString('ru-RU'); };
+  var fmtN = function (n) { return fmt(n) + ' ₽/ночь'; };
+
+  /* ================== МЕМЫ (SVG) ================== */
+  var SANS = 'Arial, sans-serif';
+  function svgWrap(inner, bg) {
+    return '<svg viewBox="0 0 360 200" xmlns="http://www.w3.org/2000/svg">' +
+      '<rect width="360" height="200" fill="' + bg + '"/>' + inner + '</svg>';
+  }
+  var MEMES = {
+    doge: {
+      caption: 'much точность, much wow',
+      svg: svgWrap(
+        // сиба-ину
+        '<ellipse cx="180" cy="128" rx="86" ry="74" fill="#E8B36B" stroke="#141414" stroke-width="5"/>' +
+        '<polygon points="104,74 96,26 146,52" fill="#E8B36B" stroke="#141414" stroke-width="5" stroke-linejoin="round"/>' +
+        '<polygon points="256,74 264,26 214,52" fill="#E8B36B" stroke="#141414" stroke-width="5" stroke-linejoin="round"/>' +
+        '<ellipse cx="180" cy="158" rx="52" ry="38" fill="#F7E6C8"/>' +
+        '<circle cx="150" cy="112" r="9" fill="#141414"/><circle cx="210" cy="112" r="9" fill="#141414"/>' +
+        '<path d="M138 92 q12 -10 24 -2" stroke="#141414" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+        '<path d="M198 90 q12 -8 24 0" stroke="#141414" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+        '<ellipse cx="180" cy="146" rx="10" ry="7" fill="#141414"/>' +
+        '<path d="M180 153 q0 14 -14 16 M180 153 q0 14 14 16" stroke="#141414" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+        '<text x="38" y="46" font-family="Comic Sans MS, cursive" font-size="19" font-weight="700" fill="#4C7DFF" transform="rotate(-8 38 46)">much точность</text>' +
+        '<text x="248" y="52" font-family="Comic Sans MS, cursive" font-size="19" font-weight="700" fill="#E0341F" transform="rotate(7 248 52)">so глаз</text>' +
+        '<text x="262" y="182" font-family="Comic Sans MS, cursive" font-size="20" font-weight="700" fill="#0E9F5B" transform="rotate(-5 262 182)">wow</text>',
+        '#FFD338')
+    },
+    pikachu: {
+      caption: 'под такое даже Пикачу в шоке 😲',
+      svg: svgWrap(
+        // уши (за головой, основания утоплены в круг головы)
+        '<polygon points="112,96 60,4 146,22" fill="#FFD338" stroke="#141414" stroke-width="5" stroke-linejoin="round"/>' +
+        '<polygon points="60,4 92,36 116,14" fill="#141414"/>' +
+        '<polygon points="248,96 300,4 214,22" fill="#FFD338" stroke="#141414" stroke-width="5" stroke-linejoin="round"/>' +
+        '<polygon points="300,4 268,36 244,14" fill="#141414"/>' +
+        '<circle cx="180" cy="118" r="72" fill="#FFD338" stroke="#141414" stroke-width="5"/>' +
+        '<circle cx="152" cy="104" r="15" fill="#fff" stroke="#141414" stroke-width="4"/>' +
+        '<circle cx="208" cy="104" r="15" fill="#fff" stroke="#141414" stroke-width="4"/>' +
+        '<circle cx="154" cy="107" r="6.5" fill="#141414"/><circle cx="206" cy="107" r="6.5" fill="#141414"/>' +
+        '<circle cx="124" cy="134" r="13" fill="#FF5D47" stroke="#141414" stroke-width="3"/>' +
+        '<circle cx="236" cy="134" r="13" fill="#FF5D47" stroke="#141414" stroke-width="3"/>' +
+        '<ellipse cx="180" cy="152" rx="14" ry="18" fill="#8B2F1D" stroke="#141414" stroke-width="4"/>' +
+        '<text x="152" y="38" font-family="' + SANS + '" font-size="26" font-weight="900" fill="#141414">?!?</text>',
+        '#F2A9F5')
+    },
+    fine: {
+      caption: 'переплата? всё нормально 🔥',
+      svg: svgWrap(
+        '<rect x="0" y="0" width="360" height="200" fill="#FFF6E8"/>' +
+        '<rect x="0" y="150" width="360" height="50" fill="#C9B28A"/>' +
+        // языки пламени
+        '<path d="M40 200 q6 -46 22 -56 q4 22 16 28 q2 -30 18 -40 q6 26 20 34 q4 -22 14 -30 q10 30 8 64 Z" fill="#FF9F1C" stroke="#141414" stroke-width="4"/>' +
+        '<path d="M250 200 q6 -40 20 -50 q4 18 14 24 q3 -26 17 -36 q6 22 17 30 q4 -18 12 -26 q10 26 8 58 Z" fill="#FF5D47" stroke="#141414" stroke-width="4"/>' +
+        // пёс
+        '<circle cx="180" cy="118" r="44" fill="#C98850" stroke="#141414" stroke-width="5"/>' +
+        '<ellipse cx="140" cy="112" rx="14" ry="24" fill="#8B5A2B" stroke="#141414" stroke-width="4"/>' +
+        '<ellipse cx="220" cy="112" rx="14" ry="24" fill="#8B5A2B" stroke="#141414" stroke-width="4"/>' +
+        '<ellipse cx="180" cy="134" rx="26" ry="18" fill="#E8C39A"/>' +
+        '<circle cx="164" cy="108" r="6" fill="#141414"/><circle cx="196" cy="108" r="6" fill="#141414"/>' +
+        '<ellipse cx="180" cy="128" rx="7" ry="5" fill="#141414"/>' +
+        '<path d="M168 142 q12 8 24 0" stroke="#141414" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+        // чашка
+        '<rect x="210" y="158" width="30" height="24" rx="4" fill="#fff" stroke="#141414" stroke-width="4"/>' +
+        '<path d="M240 163 q12 6 0 14" stroke="#141414" stroke-width="4" fill="none"/>' +
+        '<path d="M218 152 q4 -8 0 -12 M230 152 q4 -8 0 -12" stroke="#9A9A9A" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+        '<text x="24" y="40" font-family="Comic Sans MS, cursive" font-size="21" font-weight="700" fill="#141414">This is fine (это норм)</text>',
+        '#FFF6E8')
+    },
+    grumpy: {
+      caption: 'НЕТ. Просто нет. — Сердитый котик',
+      svg: svgWrap(
+        '<polygon points="110,86 88,34 148,58" fill="#BFC5CC" stroke="#141414" stroke-width="5" stroke-linejoin="round"/>' +
+        '<polygon points="250,86 272,34 212,58" fill="#BFC5CC" stroke="#141414" stroke-width="5" stroke-linejoin="round"/>' +
+        '<ellipse cx="180" cy="122" rx="88" ry="66" fill="#DDE2E8" stroke="#141414" stroke-width="5"/>' +
+        '<path d="M96 88 q40 -20 74 -6 q-30 22 -74 6 Z" fill="#8A6F52"/>' +
+        '<path d="M264 88 q-40 -20 -74 -6 q30 22 74 6 Z" fill="#8A6F52"/>' +
+        // полуприкрытые недовольные глаза
+        '<ellipse cx="148" cy="112" rx="17" ry="15" fill="#F4E58C" stroke="#141414" stroke-width="4"/>' +
+        '<ellipse cx="212" cy="112" rx="17" ry="15" fill="#F4E58C" stroke="#141414" stroke-width="4"/>' +
+        '<rect x="129" y="98" width="38" height="9" fill="#DDE2E8"/>' +
+        '<rect x="193" y="98" width="38" height="9" fill="#DDE2E8"/>' +
+        '<circle cx="148" cy="115" r="5" fill="#141414"/><circle cx="212" cy="115" r="5" fill="#141414"/>' +
+        '<path d="M170 146 l7 5 6 -5 6 5 7 -5" stroke="#141414" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+        '<path d="M180 151 q-2 10 -10 12 M180 151 q2 10 10 12" stroke="#141414" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+        '<path d="M104 128 l-22 -6 M104 138 l-22 2 M256 128 l22 -6 M256 138 l22 2" stroke="#141414" stroke-width="3" stroke-linecap="round"/>' +
+        '<text x="128" y="190" font-family="' + SANS + '" font-size="26" font-weight="900" fill="#141414">НЕТ.</text>',
+        '#DDE2E8')
+    },
+    crying: {
+      caption: 'почему такие цены... я же просто хотел(а) в Суздаль',
+      svg: svgWrap(
+        '<polygon points="106,84 88,30 146,56" fill="#7E8AA0" stroke="#141414" stroke-width="5" stroke-linejoin="round"/>' +
+        '<polygon points="254,84 272,30 214,56" fill="#7E8AA0" stroke="#141414" stroke-width="5" stroke-linejoin="round"/>' +
+        '<ellipse cx="180" cy="124" rx="86" ry="66" fill="#98A6BC" stroke="#141414" stroke-width="5"/>' +
+        '<ellipse cx="146" cy="110" rx="20" ry="18" fill="#fff" stroke="#141414" stroke-width="4"/>' +
+        '<ellipse cx="214" cy="110" rx="20" ry="18" fill="#fff" stroke="#141414" stroke-width="4"/>' +
+        '<circle cx="149" cy="114" r="8" fill="#141414"/><circle cx="211" cy="114" r="8" fill="#141414"/>' +
+        '<circle cx="146" cy="106" r="4" fill="#fff"/><circle cx="208" cy="106" r="4" fill="#fff"/>' +
+        // слюни-слёзы
+        '<path d="M140 128 q-6 34 2 46 q10 -12 4 -46 Z" fill="#7FD4FF" stroke="#141414" stroke-width="3"/>' +
+        '<path d="M216 128 q6 34 -2 46 q-10 -12 -4 -46 Z" fill="#7FD4FF" stroke="#141414" stroke-width="3"/>' +
+        '<path d="M168 152 l6 6 6 -6 6 6 6 -6" stroke="#141414" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+        '<path d="M180 152 q0 12 -8 14 M180 152 q0 12 8 14" stroke="#141414" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+        '<text x="30" y="38" font-family="Comic Sans MS, cursive" font-size="18" font-weight="700" fill="#141414">винишко не спасёт 🍷</text>',
+        '#C9D6E8')
+    },
+    rip: {
+      caption: 'rip бюджет выходного дня, 2005–н.в.',
+      svg: svgWrap(
+        // земля
+        '<rect x="0" y="150" width="360" height="50" fill="#9FBF7A" stroke="#141414" stroke-width="0"/>' +
+        // надгробие с аркой
+        '<path d="M124 160 V74 q0 -44 56 -44 q56 0 56 44 V160 Z" fill="#E8E4DC" stroke="#141414" stroke-width="5" stroke-linejoin="round"/>' +
+        // череп
+        '<ellipse cx="180" cy="112" rx="32" ry="28" fill="#fff" stroke="#141414" stroke-width="4"/>' +
+        '<rect x="167" y="133" width="26" height="13" rx="3" fill="#fff" stroke="#141414" stroke-width="3.5"/>' +
+        '<circle cx="169" cy="108" r="8.5" fill="#141414"/>' +
+        '<circle cx="191" cy="108" r="8.5" fill="#141414"/>' +
+        '<path d="M174 145 h4 M180 145 h4 M186 145 h4" stroke="#141414" stroke-width="3"/>' +
+        '<path d="M180 116 q0 8 -6 10 M180 116 q0 8 6 10" stroke="#141414" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+        // надпись на камне
+        '<text x="180" y="52" font-family="' + SANS + '" font-size="17" font-weight="900" fill="#141414" text-anchor="middle">RIP БЮДЖЕТ</text>' +
+        // цветочки
+        '<circle cx="70" cy="168" r="7" fill="#FF5D47" stroke="#141414" stroke-width="3"/>' +
+        '<circle cx="88" cy="176" r="5" fill="#FFD338" stroke="#141414" stroke-width="3"/>' +
+        '<circle cx="292" cy="168" r="7" fill="#3DDC84" stroke="#141414" stroke-width="3"/>' +
+        '<path d="M104 160 q8 -14 22 -8 M258 160 q-6 -12 -20 -8" stroke="#141414" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+        '<text x="246" y="52" font-family="Comic Sans MS, cursive" font-size="15" font-weight="700" fill="#141414">💸📉</text>',
+        '#D8E4C4')
+    }
+  };
+
+  /* ================== ЛОГИКА ================== */
+  window.MEMES = MEMES; /* для отладки/тестов */
+
+  /* логарифмический слайдер */
+  function sliderToPrice(v) {
+    var t = v / 1000;
+    return Math.round((MIN_P * Math.pow(MAX_P / MIN_P, t)) / 50) * 50;
+  }
+  function updateFill(el) {
+    var p = (el.value - el.min) / (el.max - el.min) * 100;
+    el.style.setProperty('--fill', p + '%');
+  }
+
+  /* баллы: 10/7/5/3/1/0 по точности */
+  function scoreFor(relErr) { // relErr >= 0
+    if (relErr <= 0.05) return { pts: 10, title: 'Much wow, much точность!', emoji: '🎯', meme: 'doge',
+      sub: 'Доге гордится тобой. Завтра будильник можно не ставить' };
+    if (relErr <= 0.15) return { pts: 7, title: 'Почти в яблочко', emoji: '😂', meme: 'pikachu',
+      sub: 'Зумеры сказали бы «вайб правильный». Нам и такого хватит' };
+    if (relErr <= 0.30) return { pts: 5, title: 'Ну... похоже', emoji: '🙂', meme: 'fine',
+      sub: 'Как «Друзья»: не идеально, но пересматриваем десятый раз' };
+    if (relErr <= 0.50) return { pts: 3, title: 'Мимо, но по-доброму', emoji: '😬', meme: 'grumpy',
+      sub: 'Сердитый котик смотрит с осуждением, но верит в тебя' };
+    if (relErr <= 1.00) return { pts: 1, title: 'Сильно мимо', emoji: '😭', meme: 'crying',
+      sub: 'Слёзы котика уже на подушке. Но это опыт, взрослеем' };
+    return { pts: 0, title: 'Фиаско, братан', emoji: '💀', meme: 'rip',
+      sub: 'Бюджет выходных похоронен твоей интуицией. Наливай винишко и обсудим это как в «Друзьях» — за столом у Центральной Перки...' };
+  }
+
+  /* ---------- состояние ---------- */
+  var listings = window.LISTINGS || [];
+  var deck = [], roundIdx = 0, results = [];
+
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(function (s) { s.classList.remove('active'); });
+    $(id).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  function shuffle(a) {
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function startGame() {
+    deck = shuffle(listings.slice()).slice(0, ROUNDS);
+    roundIdx = 0; results = [];
+    showRound();
+  }
+
+  function plural(n, one, few, many) {
+    var m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return one;
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+    return many;
+  }
+
+  /* ---------- раунд ---------- */
+  function showRound() {
+    var lot = deck[roundIdx];
+    $('round-label').textContent = 'Лот ' + (roundIdx + 1) + ' из ' + ROUNDS;
+    $('progress').style.width = (roundIdx / ROUNDS * 100) + '%';
+
+    var g = $('gallery'); g.innerHTML = '';
+    var dots = $('dots'); dots.innerHTML = '';
+    lot.photos.forEach(function (p, i) {
+      var s = document.createElement('div'); s.className = 'gallery-slide';
+      var img = document.createElement('img');
+      img.src = 'img/' + p; img.alt = 'Фото квартиры ' + (i + 1); img.loading = 'lazy'; img.draggable = false;
+      s.appendChild(img); g.appendChild(s);
+      var d = document.createElement('i'); if (i === 0) d.className = 'on'; dots.appendChild(d);
+    });
+    g.scrollLeft = 0;
+    $('gallery-count').textContent = lot.photos.length > 1 ? '1 / ' + lot.photos.length : '';
+
+    g.onscroll = function () {
+      var i = Math.round(g.scrollLeft / g.clientWidth);
+      $('gallery-count').textContent = lot.photos.length > 1 ? (i + 1) + ' / ' + lot.photos.length : '';
+      dots.querySelectorAll('i').forEach(function (d, k) { d.className = k === i ? 'on' : ''; });
+    };
+
+    $('lot-title').textContent = lot.title;
+    var sub = $('lot-sub'); sub.innerHTML = '';
+    function chip(text, cls) {
+      var c = document.createElement('span'); c.className = 'chip' + (cls ? ' ' + cls : '');
+      c.textContent = text; sub.appendChild(c);
+    }
+    if (lot.rating) chip('★ ' + lot.rating.toFixed(1) + (lot.reviews ? ' (' + lot.reviews + ')' : ''), 'star');
+    chip('Суздаль' + (lot.address ? ' • ' + lot.address : ''));
+    if (lot.badges && lot.badges.indexOf('Суперхозяин') >= 0) chip('👑 Суперхозяин', 'super');
+
+    var sl = $('slider'); sl.value = 500; updateFill(sl);
+    $('guess-value').innerHTML = fmt(sliderToPrice(+sl.value)) + ' <small>₽/ночь</small>';
+    show('screen-round');
+  }
+
+  $('slider').addEventListener('input', function () {
+    updateFill(this);
+    $('guess-value').innerHTML = fmt(sliderToPrice(+this.value)) + ' <small>₽/ночь</small>';
+  });
+
+  /* ---------- результат раунда ---------- */
+  $('btn-submit').addEventListener('click', function () {
+    var lot = deck[roundIdx];
+    var guess = sliderToPrice(+$('slider').value);
+    var real = lot.price;
+    var diff = guess - real;
+    var relErr = Math.abs(diff) / real;
+    var sc = scoreFor(relErr);
+
+    results.push({ guess: guess, real: real, pts: sc.pts, diffPct: diff / real * 100 });
+
+    var idx = roundIdx;
+    $('result-round-label').textContent = 'Лот ' + (idx + 1) + ' из ' + ROUNDS;
+    $('progress2').style.width = ((idx + 1) / ROUNDS * 100) + '%';
+
+    $('verdict-emoji').textContent = sc.emoji;
+    $('verdict-text').textContent = sc.title;
+    $('verdict-sub').textContent = sc.sub;
+
+    $('meme-svg').innerHTML = MEMES[sc.meme].svg;
+    $('meme-caption').textContent = MEMES[sc.meme].caption;
+
+    $('your-price').innerHTML = fmt(guess) + '<small> ₽</small>';
+    $('real-price').innerHTML = fmt(real) + '<small> ₽</small>';
+
+    var d = $('diff-line');
+    if (relErr <= 0.005) { d.className = 'diff-line exact'; d.textContent = 'В точку! Цена угадана почти идеально 🥳'; }
+    else if (diff > 0) { d.className = 'diff-line over'; d.textContent = 'Переплата: +' + fmt(diff) + ' ₽/ночь (' + (diff / real * 100).toFixed(0) + '%) — хозяин уже открыл винишко 🍷'; }
+    else { d.className = 'diff-line under'; d.textContent = 'Недооценка: −' + fmt(-diff) + ' ₽/ночь (' + (-diff / real * 100).toFixed(0) + '%) — торгуйся смело, ты почти местный 🤝'; }
+
+    $('score-chip').textContent = '+' + sc.pts + ' ' + plural(sc.pts, 'балл', 'балла', 'баллов') + ' (и +1 к взрослости)';
+    var total = results.reduce(function (s, r) { return s + r.pts; }, 0);
+    $('score-note').textContent = 'Всего баллов: ' + total + ' из ' + ((idx + 1) * 10) + '. Мы в тебя верим (наверное)';
+
+    $('listing-link').href = lot.url;
+    $('btn-next').textContent = (idx + 1 === ROUNDS) ? 'Итоги игры 🏁' : 'Следующая квартира 😤';
+    show('screen-result');
+  });
+
+  $('btn-next').addEventListener('click', function () {
+    roundIdx++;
+    if (roundIdx < ROUNDS) showRound(); else showFinal();
+  });
+
+  /* ---------- итог ---------- */
+  function showFinal() {
+    var total = results.reduce(function (s, r) { return s + r.pts; }, 0);
+    var avgBias = results.reduce(function (s, r) { return s + r.diffPct; }, 0) / results.length;
+    var best = Math.max.apply(null, results.map(function (r) { return r.pts; }));
+    var perfect = results.filter(function (r) { return r.pts === 10; }).length;
+
+    var name, emoji, desc;
+    if (avgBias < -10) {
+      name = 'Вечный торгаш'; emoji = '🧾';
+      desc = 'Тебе всё кажется дешевле, чем есть. Хозяева Суздаля уже вздрагивают от слова «скидка». Зато с котиками договоришься';
+    } else if (avgBias > 10) {
+      name = 'Московский инвестор'; emoji = '💸';
+      desc = 'Ты оцениваешь ночёвку в Суздале по ценам Патрики. Хозяева обожают тебя, твой банковский счёт — нет';
+    } else {
+      name = 'Суперхозяин интуиции'; emoji = '🏡';
+      desc = 'Твои оценки совпадают с реальностью чаще, чем планы с дедлайнами. Можно открывать свой мини-отель (и завести кота)';
+    }
+
+    $('persona-name').textContent = name;
+    $('persona-emoji').textContent = emoji;
+    $('persona-desc').textContent = desc;
+    $('final-score').textContent = total;
+    $('stat-avg').textContent = (avgBias > 0 ? '+' : '') + avgBias.toFixed(0) + '%';
+    $('stat-best').textContent = best;
+    $('stat-perfect').textContent = perfect;
+    $('final-hint').textContent = perfect > 0
+      ? 'Точных попаданий (±5%): ' + perfect + ' из ' + ROUNDS + '. Интуиция прокачана лучше, чем прокрастинация 😎'
+      : 'Точное попадание — ошибка до 5% (10 баллов). Ещё раз, но уже с кофе ☕';
+
+    show('screen-final');
+  }
+
+  /* ---------- кнопки ---------- */
+  $('btn-start').addEventListener('click', startGame);
+  $('btn-restart').addEventListener('click', startGame);
+})();
+</script>
+</body>
+</html>
